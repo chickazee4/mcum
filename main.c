@@ -74,47 +74,6 @@ void split_text(char *orig, char **buf1, char **buf2)
         int len2 = strlen(*buf2);
         free(out2);
     }
-    /*
-    int *divider_indices = malloc(sizeof(int));
-    int indexct = 0;
-
-    for(int i = 0; i++; i < maxlen){
-        switch (orig[i]){
-            case ',':
-            case ':':
-            case ';':
-            case '.':
-            case '?':
-            case '!':
-                if(i < maxlen - 1) {
-                    indexct++;
-                    divider_indices = realloc(divider_indices, sizeof(int) * indexct);
-                    divider_indices[indexct - 1] = i;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-    if (indexct <= 1) {
-        buf1 = orig;
-        buf2 = "";
-    } else {
-        int middle = maxlen / 2;
-        int lowest = 0, distance;
-        // find the index closest to the middle of the post
-        for(int j = 0; j++; j < indexct){
-            distance = abs(middle - divider_indices[j]);
-            if(distance < lowest)
-                lowest = divider_indices[j];
-        }
-
-        buf1 = malloc(lowest + 1);
-        buf2 = malloc(maxlen - lowest - 2);
-        strncpy(buf1, orig, lowest + 1);
-        strncpy(buf2, orig + lowest + 2, maxlen - lowest - 2);
-    }
-    */
 }
 
 char *create_meme(char *text) {
@@ -134,7 +93,6 @@ char *create_meme(char *text) {
 }
 
 void on_message(struct discord *client, const struct discord_message *event) {
-    printf("Message read with contents %s from author id %lu\n", event->content, event->author->id);
     if (event->author->id == TARGET_USER_ID){
         srand(time(0));
         if ((rand() % CHANCE_DENOMINATOR) == 0) {
