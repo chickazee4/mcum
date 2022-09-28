@@ -1,5 +1,6 @@
 #ifndef IMGFLIP_H
 #define IMGFLIP_H
+#include <stdio.h>
 
 #define KERMIT_TEA "16464531"
 #define CONDESCENDING_WONKA "61582"
@@ -19,7 +20,12 @@
 #define RONALD_REAGAN_2 "413690640"
 #define FLAMING_SKULL "413686331"
 
+extern char *config_file;
 extern char *imgflip_password;
+extern char *imgflip_username;
+extern unsigned int chance_denominator;
+extern char *bot_token;
+extern uint64_t target_id;
 
 typedef struct {
     unsigned char *buffer;
@@ -42,7 +48,8 @@ typedef struct imgflip_response {
     char *url;
 } Imgflip_response;
 
-Imgflip_response request_meme(Imgflip_request *im);
-Imgflip_request create_random_request(char *text0, char *text1);
+Imgflip_response request_meme(Imgflip_request *);
+Imgflip_request create_random_request(char *, char *);
+void get_key(char **, char *);
 
 #endif

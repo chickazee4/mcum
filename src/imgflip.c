@@ -5,10 +5,8 @@
 #include <curl/curl.h>
 #include <json-c/json.h>
 
-#include "imgflip.h"
-#include "mcum_configuration.h"
+#include "mcum.h"
 
-char *imgflip_password;
 char *imgflip_ids[] = { KERMIT_TEA, CONDESCENDING_WONKA, GRUMPY_CAT, BIKER_GUY, NUCLEAR_FAMILY, JOHN_WAYNE_1, JOHN_WAYNE_2, MOTORCYCLE, YOUNG_SAM_ELLIOTT, OLD_SAM_ELLIOTT_1, OLD_SAM_ELLIOTT_2, PUNISHER, CHUNKY_FARMER, MINIONS_1, RONALD_REAGAN_1, RONALD_REAGAN_2, FLAMING_SKULL };
 
 Imgflip_response structify(void *data)
@@ -18,7 +16,6 @@ Imgflip_response structify(void *data)
     struct json_object *success;
     json_object_object_get_ex(dataj, "success", &success);
     char *success_str = json_object_to_json_string(success);
-    printf("%s\n", success_str);
     if (strcmp(success_str, "true") == 0)
         ret.success = 1;
     else
@@ -58,8 +55,6 @@ size_t callback(char *ptr, size_t size, size_t nmemb, void *data)
     size_t realsize = size * nmemb;
     get_request *req = (get_request *) data;
 
-    printf("receive chunk of %zu bytes\n", realsize);
-
     while (req->buflen < req->len + realsize + 1)
     {
         req->buffer = realloc(req->buffer, req->buflen + 2048);
@@ -68,8 +63,6 @@ size_t callback(char *ptr, size_t size, size_t nmemb, void *data)
     memcpy(&req->buffer[req->len], ptr, realsize);
     req->len += realsize;
     req->buffer[req->len] = 0;
-
-    printf("%s", req->buffer);
 
     return realsize;
 }
@@ -138,6 +131,6 @@ Imgflip_request create_random_request(char *text0, char *text1)
     int rollmax = sizeof(imgflip_ids) / sizeof(char *);
     srand(time(0));
     int roll = rand() % rollmax;
-    Imgflip_request irq = { .template_id=imgflip_ids[roll], .username=IMGFLIP_USERNAME, .password=imgflip_password, .text0=text0, .text1=text1 };
+    Imgflip_request irq = { .template_id=imgflip_ids[roll], .username=imgflip_username, .password=imgflip_password, .text0=text0, .text1=text1 };
     return irq;
 }
