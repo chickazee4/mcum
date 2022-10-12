@@ -16,9 +16,16 @@
 #define PUNISHER "413684154"
 #define CHUNKY_FARMER "413684277"
 #define MINIONS_1 "413684447"
+#define MINIONS_2 "414928448"
 #define RONALD_REAGAN_1 "413685043"
 #define RONALD_REAGAN_2 "413690640"
 #define FLAMING_SKULL "413686331"
+#define KNITTING "415073804"
+#define CLINT_EASTWOOD_1 "415074557"
+#define CLINT_EASTWOOD_2 "415074830"
+#define CLINT_EASTWOOD_3 "415075058"
+#define ELVIS "415075882"
+
 
 extern char *config_file;
 extern char *imgflip_password;

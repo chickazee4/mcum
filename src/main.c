@@ -16,11 +16,25 @@ char *imgflip_username = NULL;
 char *imgflip_password = NULL;
 unsigned int chance_denominator = UINT32_MAX;
 
-void on_ready(struct discord *client, const struct discord_ready *event) {
+int mflag = 0;
+int aflag = 0;
+
+void
+on_ready(struct discord *client, const struct discord_ready *event)
+{
     log_info("Logged in as %s!", event->user->username);
+    if(aflag == 0){
+        struct discord_create_global_application_command params = {
+            .type = DISCORD_APPLICATION_CHAT_INPUT,
+            .name = "boomerize",
+            .description = "Boomerize a post by replying"
+        };
+        discord_create_global_application_command(client, event->application->id, &params, NULL);
+    }
 }
 
-char *strip_quotes(char *orig)
+char *
+strip_quotes(char *orig)
 {
     int len = strlen(orig);
     char *new = malloc(len * sizeof(char));
@@ -35,7 +49,8 @@ char *strip_quotes(char *orig)
     return new;
 }
 
-char *strip_url(char *orig)
+char *
+strip_url(char *orig)
 {
     int len = strlen(orig);
     char *new = malloc(len * sizeof(char));
@@ -51,7 +66,8 @@ char *strip_url(char *orig)
 }
 
 // remove extraneous whitespace
-void strip_ws(char *orig, int len)
+void
+strip_ws(char *orig, int len)
 {
     for(int i = 0; i < len; i++){
         if(orig[i] == '\n' || orig[i] == '\t'){
@@ -60,7 +76,8 @@ void strip_ws(char *orig, int len)
     }
 }
 
-void split_text(char *orig, char **buf1, char **buf2)
+void
+split_text(char *orig, char **buf1, char **buf2)
 {
     int maxlen = strlen(orig);
     strip_ws(orig, maxlen);
@@ -97,7 +114,8 @@ void split_text(char *orig, char **buf1, char **buf2)
     }
 }
 
-char *create_meme(char *text) {
+char *
+create_meme(char *text) {
     char *buf1;
     char *buf2;
     split_text(text, &buf1, &buf2);
@@ -113,7 +131,8 @@ char *create_meme(char *text) {
     }
 }
 
-void on_message(struct discord *client, const struct discord_message *event) {
+void
+on_message(struct discord *client, const struct discord_message *event) {
     if (event->author->id == target_id){
         srand(time(0));
         if ((rand() % chance_denominator) == 0) {
@@ -127,6 +146,33 @@ void on_message(struct discord *client, const struct discord_message *event) {
 }
 
 void
+on_interaction(struct discord *client, const struct discord_interaction *event)
+{
+    if (event->type != DISCORD_INTERACTION_APPLICATION_COMMAND)
+        return;
+    if (strcmp(event->data->name, "boomerize") == 0) {
+        struct discord_get_channel_messages msgparms = {
+            .before = 1,
+            .limit = 1
+        };
+        struct discord_messages msgs = { 0 };
+        struct discord_ret_messages drm = {
+            .sync = &msgs
+        };
+
+        discord_get_channel_messages(client, event->channel_id, &msgparms, &drm);
+        char *url = create_meme(msgs.array[0].content);
+        struct discord_interaction_response params = {
+                .type = DISCORD_INTERACTION_CHANNEL_MESSAGE_WITH_SOURCE,
+                .data = &(struct discord_interaction_callback_data){
+                    .content = url
+                }
+        };
+        discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+    }
+}
+
+void
 load_cfg()
 {
     FILE *cfgfp;
@@ -136,7 +182,7 @@ load_cfg()
         if(bot_token == NULL) get_key(&bot_token, "Discord bot token");
         if(imgflip_username == NULL) get_key(&imgflip_username, "Imgflip username");
         if(imgflip_password == NULL) get_key(&imgflip_password, "Imgflip password");
-        if(target_id == 0){
+        if(mflag == 0 && target_id == 0){
             printf("And your target Discord user ID: ");
             scanf("%lu", &target_id);
         }
@@ -188,7 +234,7 @@ load_cfg()
                 get_key(&imgflip_password, "Imgflip password");
             }
         }
-        if(target_id == 0){
+        if(mflag == 0 && target_id == 0){
             struct json_object *jobj_targetid;
             char *tmp1, *tmp2;
             if (json_object_object_get_ex(data, "target_id", &jobj_targetid)){
@@ -226,6 +272,9 @@ main(int argc, char **argv) {
         for(int i = 0; i < argc; i++){
             if(argv[i][0] == '-'){
                 switch(argv[i][1]){
+                    case 'a':
+                        aflag = 1;
+                        break;
                     case 'c':
                         if(i < argc - 1){
                             i++;
@@ -246,6 +295,9 @@ main(int argc, char **argv) {
                                 exit(4);
                             }
                         }
+                        break;
+                    case 'm':
+                        mflag = 1;
                         break;
                     case 'p':
                         if(i < argc - 1){
@@ -272,6 +324,7 @@ main(int argc, char **argv) {
             }
         }
     }
+    if(aflag && mflag) aflag = mflag = 0;
     load_cfg();
     if(chance_denominator == UINT32_MAX){
         chance_denominator = 1;
@@ -280,6 +333,9 @@ main(int argc, char **argv) {
     struct discord *client = discord_init(bot_token);
     discord_add_intents(client, DISCORD_GATEWAY_MESSAGE_CONTENT);
     discord_set_on_ready(client, &on_ready);
-    discord_set_on_message_create(client, &on_message);
+    if(mflag == 0)
+        discord_set_on_message_create(client, &on_message);
+    if(aflag == 0)
+        discord_set_on_interaction_create(client, &on_interaction);
     discord_run(client);
 }

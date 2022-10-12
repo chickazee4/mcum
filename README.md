@@ -29,6 +29,11 @@ This is fine if you have a config.json in the location that you set as the defau
 
 Arguments passed will override those in config.json, if they exist.
 
+The default for mcum is to automatically boomerize a specified target user's posts at your specified frequency, but it also creates a chat command that can be used to manually boomerize any post. You can change which of these is done with command line flags:
+
+    -a          Automatic operation only: no chat command will be created
+    -m          Manual operation only: no automatic targeting, users must reply to the target post with the command /boomerize
+
 # Compilation directions
 
 Requires: [concord](https://github.com/Cogmasters/concord), [json-c](https://github.com/json-c/json-c), curl, CMake, Unix system with a modern libc (tested on FreeBSD and Linux, probably also works on macOS, maybe with minimal changes)

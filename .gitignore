@@ -2,4 +2,3 @@ build
 config.json
 *.kdev4
 .kdev4
-mcum_configuration.h
