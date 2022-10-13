@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Passwordize later
+// todo, obviously
 
 void
 get_key(char **cp, char *prompt)

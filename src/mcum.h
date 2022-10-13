@@ -1,6 +1,8 @@
 #ifndef IMGFLIP_H
 #define IMGFLIP_H
 #include <stdio.h>
+#include <stdint.h>
+#include <time.h>
 
 #define KERMIT_TEA "16464531"
 #define CONDESCENDING_WONKA "61582"
@@ -26,7 +28,6 @@
 #define CLINT_EASTWOOD_3 "415075058"
 #define ELVIS "415075882"
 
-
 extern char *config_file;
 extern char *imgflip_password;
 extern char *imgflip_username;
@@ -40,7 +41,7 @@ typedef struct {
     size_t buflen;
 } get_request;
 
-typedef struct imgflip_request {
+typedef struct {
     char *template_id;
     char *username;
     char *password;
@@ -48,15 +49,27 @@ typedef struct imgflip_request {
     char *text1;
 } Imgflip_request;
 
-typedef struct imgflip_response {
+typedef struct {
     int success; // 0 or 1
     char *error_message;
     char *page_url;
     char *url;
 } Imgflip_response;
 
+typedef struct {
+    int id;
+    int turns_taken;
+    int turns_allowed;
+    time_t first_turn;
+    int immune;
+} User;
+
 Imgflip_response request_meme(Imgflip_request *);
 Imgflip_request create_random_request(char *, char *);
+
 void get_key(char **, char *);
+
+uint64_t * includes_snowflake(uint64_t[], uint64_t, int);
+uint64_t ** append_snowflake(uint64_t **, uint64_t, int);
 
 #endif

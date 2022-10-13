@@ -16,22 +16,19 @@ char *imgflip_username = NULL;
 char *imgflip_password = NULL;
 unsigned int chance_denominator = UINT32_MAX;
 
-int mflag = 0;
-int aflag = 0;
+int turns = -1;
+uint64_t role = 0;
+uint64_t power_role = 0;
 
-void
-on_ready(struct discord *client, const struct discord_ready *event)
-{
-    log_info("Logged in as %s!", event->user->username);
-    if(aflag == 0){
-        struct discord_create_global_application_command params = {
-            .type = DISCORD_APPLICATION_CHAT_INPUT,
-            .name = "boomerize",
-            .description = "Boomerize a post by replying"
-        };
-        discord_create_global_application_command(client, event->application->id, &params, NULL);
-    }
-}
+uint64_t *blacklist = NULL;
+int blacklist_count = 0;
+
+User users[];
+
+int mflag = 0,
+    mfset = 0,
+    aflag = 0,
+    afset = 0;
 
 char *
 strip_quotes(char *orig)
@@ -148,11 +145,13 @@ on_message(struct discord *client, const struct discord_message *event) {
 void
 on_interaction(struct discord *client, const struct discord_interaction *event)
 {
-    if (event->type != DISCORD_INTERACTION_APPLICATION_COMMAND)
+    if(event->type != DISCORD_INTERACTION_APPLICATION_COMMAND)
         return;
-    if (strcmp(event->data->name, "boomerize") == 0) {
+    if((strcmp(event->data->name, "boomerize") == 0) && 
+            (role == 0 || includes_snowflake(event->member->roles->array, role, event->member->roles->size) != NULL) && 
+            (includes_snowflake_ptr(blacklist, msgs.array[0].author->id, blacklist_count) == NULL)){
         struct discord_get_channel_messages msgparms = {
-            .before = 1,
+            .before = 0,
             .limit = 1
         };
         struct discord_messages msgs = { 0 };
@@ -161,17 +160,75 @@ on_interaction(struct discord *client, const struct discord_interaction *event)
         };
 
         discord_get_channel_messages(client, event->channel_id, &msgparms, &drm);
-        char *url = create_meme(msgs.array[0].content);
-        struct discord_interaction_response params = {
-                .type = DISCORD_INTERACTION_CHANNEL_MESSAGE_WITH_SOURCE,
+        if(msgs.array[0].author->bot){
+            struct discord_interaction_response params = {
+                .type = DISCORD_INTERACTION_MODAL,
                 .data = &(struct discord_interaction_callback_data){
-                    .content = url
+                    .title = "Bozo",
+                    .content = "mcum is not allowed to operate on this post."
                 }
+            };
+            discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+        } else {
+            char *url = create_meme(msgs.array[0].content);
+            discord_messages_cleanup(&msgs);
+            struct discord_interaction_response params = {
+                    .type = DISCORD_INTERACTION_CHANNEL_MESSAGE_WITH_SOURCE,
+                    .data = &(struct discord_interaction_callback_data){
+                        .content = url
+                    }
+            };
+            discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+        }
+    }
+    if()
+}
+
+void
+on_ready(struct discord *client, const struct discord_ready *event)
+{
+    log_info("Logged in as %s!", event->user->username);
+    if(aflag == 0){
+        struct discord_create_global_application_command boomerize = {
+            .type = DISCORD_APPLICATION_CHAT_INPUT,
+            .name = "boomerize",
+            .description = "Boomerize the above post"
         };
-        discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+        discord_create_global_application_command(client, event->application->id, &boomerize, NULL);
+
+        struct discord_create_global_application_command blacklist = {
+            .type = DISCORD_APPLICATION_CHAT_INPUT,
+            .name = "mcum-blacklist",
+            .description = "Blacklist this user from using mcum for this session"
+        };
+        discord_create_global_application_command(client, event->application->id, &blacklist, NULL);
+        
+        if(turns > -1) {
+            struct discord_create_global_application_command giveturns = {
+                .type = DISCORD_APPLICATION_CHAT_INPUT,
+                .name = "mcum-give-turns",
+                .description = "Give this user additional turns with mcum for the day (or take away, with a negative number)"
+            };
+            discord_create_global_application_command(client, event->application->id, &giveturns, NULL);
+        }
+
+        struct discord_create_global_application_command immunize = {
+            .type = DISCORD_APPLICATION_CHAT_INPUT,
+            .name = "mcum-immunize",
+            .description = "Prevent this user from being boomerized"
+        };
+        discord_create_global_application_command(client, event->application->id, &immunize, NULL);
+
+        struct discord_create_global_application_command whitelist = {
+            .type = DISCORD_APPLICATION_CHAT_INPUT,
+            .name = "mcum-whitelist",
+            .description = "Remove this user from the mcum blacklist for this session"
+        };
+        discord_create_global_application_command(client, event->application->id, &whitelist, NULL);
     }
 }
 
+// yes, i am aware that concord offers an interface for this. no, i will not use it (too limited and we already have to link against json-c anyway so might as well make use of it). cope, seethe, mald, etc 
 void
 load_cfg()
 {
@@ -188,11 +245,11 @@ load_cfg()
         }
     } else if (bot_token == NULL || imgflip_username == NULL || bot_token == NULL || target_id == 0 || chance_denominator == UINT32_MAX){
         char read;
-        char *line;
+        char *line = NULL;
         char *contents = malloc(1);
         contents[0] = '\0';
         size_t len, curlen = 0;
-        while ((read = getline(&line , &len, cfgfp)) != -1) {
+        while ((read = getline(&line, &len, cfgfp)) != -1) {
             contents = realloc(contents, curlen + len);
             curlen += len;
             strcat(contents, line);
@@ -201,6 +258,22 @@ load_cfg()
 
         struct json_object *data = json_tokener_parse(contents);
 
+        if(afset == 0 && mfset == 0){
+            char *tmp;
+            struct json_object *jobj_mode;
+            if(json_object_object_get_ex(data, "mode", &jobj_mode)){
+                tmp = json_object_to_json_string(jobj_mode);
+                if(tmp == "manual"){
+                    mflag = 1;
+                } else if(tmp == "automatic"){
+                    aflag = 1;
+                } else {
+                    perror("Invalid bot mode selected in config.json - check spelling. Continuing with both manual and automatic mode enabled.");
+                }
+            }
+            afset = 1;
+            mfset = 1;
+        }
         if(bot_token == NULL){
             char *tmp;
             struct json_object *jobj_token;
@@ -236,31 +309,46 @@ load_cfg()
         }
         if(mflag == 0 && target_id == 0){
             struct json_object *jobj_targetid;
-            char *tmp1, *tmp2;
             if (json_object_object_get_ex(data, "target_id", &jobj_targetid)){
-                tmp1 = json_object_to_json_string(jobj_targetid);
-                tmp2 = strip_quotes(tmp1);
-                free(tmp1);
-                if((target_id = (uint64_t)atol(tmp2)) <= 0){
-                    printf("Target Discord user ID: ");
-                    scanf("%lu", &target_id);
-                }
+                target_id = json_object_get_uint64(jobj_targetid);
             } else {
                 printf("Target Discord user ID: ");
                 scanf("%lu", &target_id);
             }
         }
         if(chance_denominator == UINT32_MAX){
-            char *tmp1, *tmp2;
-            unsigned int i;
             struct json_object *jobj_chance;
             if (json_object_object_get_ex(data, "chance", &jobj_chance)){
-                tmp1 = json_object_to_json_string(jobj_chance);
-                tmp2 = strip_quotes(tmp1);
-                free(tmp1);
-                if((i = (unsigned int)atoi(tmp2)) > 0)
-                    chance_denominator = i;
-                free(tmp2);
+                chance_denominator = (unsigned int)json_object_get_int(jobj_chance);
+            }
+        }
+        if(turns == -1){
+            struct json_object *jobj_turns;
+            if (json_object_object_get_ex(data, "turns", &jobj_turns)){
+                chance_denominator = (unsigned int)json_object_get_int(jobj_turns);
+            }
+        }
+        if(power_role == 0){
+            struct json_object *jobj_powerrole;
+            if (json_object_object_get_ex(data, "power_role", &jobj_powerrole)){
+                power_role = json_object_get_uint64(jobj_powerrole);
+            }
+        }
+        if(role == 0){
+            struct json_object *jobj_role;
+            if (json_object_object_get_ex(data, "role", &jobj_role)){
+                role = json_object_get_uint64(jobj_role);
+            }
+        }
+        struct json_object *json_blacklist;
+        if (json_object_object_get_ex(data, "blacklist", &json_blacklist)){
+            blacklist_count = json_object_array_length(json_blacklist);
+            struct json_object *json_cur_bl;
+            uint64_t cur_bl;
+            for(int i = 0; i < blacklist_count; i++){
+                json_cur_bl = json_object_array_get_idx(json_blacklist, i);
+                cur_bl = json_object_get_uint64(json_cur_bl);
+                append_snowflake(blacklist, cur_bl);
             }
         }
     }
@@ -274,6 +362,7 @@ main(int argc, char **argv) {
                 switch(argv[i][1]){
                     case 'a':
                         aflag = 1;
+                        afset = 1;
                         break;
                     case 'c':
                         if(i < argc - 1){
@@ -298,6 +387,7 @@ main(int argc, char **argv) {
                         break;
                     case 'm':
                         mflag = 1;
+                        mfset = 1;
                         break;
                     case 'p':
                         if(i < argc - 1){
@@ -311,6 +401,11 @@ main(int argc, char **argv) {
                             bot_token = argv[i];
                         }
                         break;
+                    case 'T':
+                        if(i < argc - 1){
+                            turns = (unsigned int)atoi(argv[i+1]);
+                            i++;
+                        }
                     case 'u':
                         if(i < argc - 1){
                             i++;

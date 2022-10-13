@@ -13,6 +13,6 @@ find_library(
 
 configure_file(config.h.in ${CMAKE_BINARY_DIR}/config.h)
 
-add_executable(mcum main.c imgflip.c password.c)
+add_executable(mcum main.c imgflip.c password.c arrays.c)
 target_link_libraries(mcum ${CONCORD} CURL::libcurl ${JSON-C_LIBRARY} pthread)
 target_include_directories(mcum PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})

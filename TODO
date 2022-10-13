@@ -1,0 +1,5 @@
+- Add option for dynamic message cache in manual mode for certain use cases
+- Secure password entry
+- Multiple target users
+- More templates
+- Make the bot actually respond instead of timing out for illegal requests
