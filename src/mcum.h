@@ -69,7 +69,9 @@ Imgflip_request create_random_request(char *, char *);
 
 void get_key(char **, char *);
 
-uint64_t * includes_snowflake(uint64_t[], uint64_t, int);
-uint64_t ** append_snowflake(uint64_t **, uint64_t, int);
+uint64_t *  includes_snowflake       (  uint64_t[],   uint64_t,  int  );
+uint64_t *  includes_snowflake_ptr   (  uint64_t **,  uint64_t,  int  );
+uint64_t ** append_snowflake         (  uint64_t **,  uint64_t,  int  );
+uint64_t ** remove_snowflake         (  uint64_t **,  uint64_t,  *int );
 
 #endif

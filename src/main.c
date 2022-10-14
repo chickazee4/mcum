@@ -143,6 +143,19 @@ on_message(struct discord *client, const struct discord_message *event) {
 }
 
 void
+modal_error(char *msg, struct discord *client, struct discord_interaction *event)
+{
+    struct discord_interaction_response params = {
+        .type = DISCORD_INTERACTION_MODAL,
+        .data = &(struct discord_interaction_callback_data){
+            .title = "Bozo",
+            .content = msg
+        }
+    };
+    discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+}
+
+void
 on_interaction(struct discord *client, const struct discord_interaction *event)
 {
     if(event->type != DISCORD_INTERACTION_APPLICATION_COMMAND)
@@ -161,14 +174,7 @@ on_interaction(struct discord *client, const struct discord_interaction *event)
 
         discord_get_channel_messages(client, event->channel_id, &msgparms, &drm);
         if(msgs.array[0].author->bot){
-            struct discord_interaction_response params = {
-                .type = DISCORD_INTERACTION_MODAL,
-                .data = &(struct discord_interaction_callback_data){
-                    .title = "Bozo",
-                    .content = "mcum is not allowed to operate on this post."
-                }
-            };
-            discord_create_interaction_response(client, event->id, event->token, &params, NULL);
+            modal_error("Can't boomerize a bot post.", client, event);
         } else {
             char *url = create_meme(msgs.array[0].content);
             discord_messages_cleanup(&msgs);
@@ -181,7 +187,29 @@ on_interaction(struct discord *client, const struct discord_interaction *event)
             discord_create_interaction_response(client, event->id, event->token, &params, NULL);
         }
     }
-    if()
+    if((strcmp(event->data->name, "mcum-blacklist") == 0) && 
+            (power_role == 0 || includes_snowflake(event->member->roles->array, power_role, event->member->roles->size) != NULL)){
+        if (event->data->values->size == 1){
+            uint64_t target_bl = 0;
+            if((target_bl = atol(event->data->values->array[0])) != 0){
+                append_snowflake(&blacklist, taget_bl, blacklist_count);
+                blacklist_count++;
+            }
+        } else {
+            modal_error("Wrong number of arguments.", client, event);
+        }
+    }
+    if((strcmp(event->data->name, "mcum-whitelist") == 0) && 
+            (power_role == 0 || includes_snowflake(event->member->roles->array, power_role, event->member->roles->size) != NULL)){
+        if (event->data->values->size == 1){
+            uint64_t target_wl = 0;
+            if((target_wl = atol(event->data->values->array[0])) != 0){
+                remove_snowflake(&blacklist, target_wl, &blacklist_count);
+            }
+        } else {
+            modal_error("Wrong number of arguments.", client, event);
+        }
+    }
 }
 
 void
@@ -348,7 +376,7 @@ load_cfg()
             for(int i = 0; i < blacklist_count; i++){
                 json_cur_bl = json_object_array_get_idx(json_blacklist, i);
                 cur_bl = json_object_get_uint64(json_cur_bl);
-                append_snowflake(blacklist, cur_bl);
+                append_snowflake(&blacklist, cur_bl);
             }
         }
     }

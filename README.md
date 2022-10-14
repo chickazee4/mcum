@@ -11,8 +11,9 @@ You do not need to create a config.json in order to use the program (see Usage f
 * chance - the denominator of the likelihood (1/x) that mcum will create a meme out of a target user's post
 * imgflip_username - username for the Imgflip account to use
 * imgflip_password - password for the Imgflip account (also not recommended to store in this file for the same reason as the token)
+* immunized - an *array* consisting of user IDs whose posts cannot be boomerized. This automatically includes bots.
 * mode - the mode for mcum to operate in by default (must be either `"manual"` or `"automatic"`; if you want to use both, which is the default behavior, do not add a field to the config.json). 
-* power_role - numeric ID of role needed to blacklist, whitelist, or give additional turns to a user 
+* power_role - numeric ID of role needed to blacklist, whitelist, immunize, or give additional turns to a user 
 * role - numeric ID of role needed to boomerize posts (if not set, available to any user with command permission)
 * target_id - the Discord numeric user ID for the target user in automatic mode. Ignored in manual mode.
 * turns - the number of times a user can manually invoke mcum per 24-hour period (period defined per user, so every user must wait 24 hours from the first time they invoke mcum within a cycle once using up all turns). Ignored if automatic-only mode is on. If omitted or set to -1, users have infinite turns by default.
@@ -69,6 +70,29 @@ Commands are only created if running in default (combined) mode or manual mode. 
 * /mcum-give-turns user_id how_many - give additional turns to a user (must use user ID).
 * /mcum-immunize user_id - prevent a user from being boomerized
 * /mcum-whitelist user_id - temporarily, while mcum is running, whitelist a user who is on the blacklist. Must use user ID, not name.
+
+# Comparison of mcum configuration actions
+
+Inheritance pattern: Discord commands override command line flags override config.json entries. Only config.json entries are persistent across sessions. The path to the config.json can also be hardcoded at compile time, which is, of course, also persistent. It is the only variable that supports this.
+
+If the table says a variable is relevant in "automatic" or "manual" mode, that also includes default (both) mode.
+
+| Action/variable          | config.json          | Command line flag | Discord command     | Mandatory?      | Type                                     | Modes     | Default value                        |
+---------------------------|----------------------|-------------------|---------------------|-----------------|------------------------------------------|-----------|--------------------------------------|
+| Discord bot token        | bot_token            | -t [...]          | -                   | Yes             | string                                   | All       | [empty]                              |
+| Imgflip username         | imgflip_username     | -u [...]          | -                   | Yes             | string                                   | All       | [empty]                              |
+| Imgflip password         | imgflip_password     | -p [...]          | -                   | Yes             | string                                   | All       | [empty]                              |
+| Path to config.json      | -                    | -c [...]          | -                   | No              | string                                   | All       | $INSTALL_PREFIX/etc/mcum/config.json |
+| Run mode                 | mode                 | -a, -m            | -                   | No              | enum ("manual"/"automatic")              | (affects) | [both]                               |
+| Target user ID           | target_id            | -i [...]          | -                   | In auto mode    | uint64 (Discord ID)                      | Automatic | [empty]                              |
+| 1/chance of effect       | chance               | -d [...]          | -                   | No              | uint32                                   | Automatic | 1                                    |               
+| Default # daily turns    | turns                | -T [...]          | -                   | No              | uint32                                   | Manual    | -1 (=infinity)                       |
+| Role needed to boomerize | role                 | -                 | -                   | No              | uint64                                   | Manual    | [empty] (no role necessary)          |
+| Role for bot managers    | power_role           | -                 | -                   | No              | uint64                                   | Manual    | [empty] (no role necessary)          |
+| Give extra turns         | -                    | -                 | /mcum-give-turns    | No              | uint64 (to whom) uint32 (how many)       | Manual    | -                                    |
+| Immunize user(s)         | immunized            | -                 | /mcum-immunize      | No              | uint64[] (config.json); uint64 (Discord) | Manual    | [empty]                              |
+| Blacklist user(s)        | blacklist            | -                 | /mcum-blacklist     | No              | uint64[] (config.json); uint64 (Discord) | Manual    | [empty]                              |
+| Whitelist user(s)        | -                    | -                 | /mcum-whitelist     | No              | uint64                                   | Manual    | -                                    |       
 
 # Compilation directions
 

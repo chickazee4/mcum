@@ -3,3 +3,4 @@
 - Multiple target users
 - More templates
 - Make the bot actually respond instead of timing out for illegal requests
+- Add a command to change targeted user(s) ad hoc
